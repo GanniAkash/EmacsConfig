@@ -318,6 +318,12 @@
 (after! lsp-mode
   ;; Associate nasm-mode with asm-lsp
   (add-to-list 'lsp-language-id-configuration '(nasm-mode . "nasm"))
+  (setq-local lsp-ui-doc-enable t            ;; Enable LSP UI documentation for asm-lsp
+                          lsp-ui-doc-show-with-cursor t  ;; Show hover with cursor movement
+                          lsp-ui-doc-delay 0.2)
+  (setq-local lsp-ui-doc-max-width 100    ;; Set max width for asm-lsp hover docs
+                          lsp-ui-doc-max-height 50   ;; Set max height for asm-lsp hover docs
+                          lsp-ui-doc-position 'at-point)
   (lsp-register-client
    (make-lsp-client
     :new-connection (lsp-stdio-connection "asm-lsp")

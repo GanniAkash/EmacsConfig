@@ -131,31 +131,31 @@
 ;; Path for git
 (setq magit-git-executable "D:\\Applications\\MSYS2\\usr\\bin\\git.exe") ;; replace with the correct path to git.exe
 
-;;For asm-lsp
-(after! lsp-mode
-  (add-hook 'asm-mode-hook
-            (lambda ()
-              (setq-local lsp-ui-doc-enable t            ;; Enable LSP UI documentation for asm-lsp
-                          lsp-ui-doc-show-with-cursor t  ;; Show hover with cursor movement
-                          lsp-ui-doc-delay 0.2))))     ;; Set delay before hover shows
-(after! lsp-ui-doc
-  (add-hook 'asm-mode-hook
-            (lambda ()
-              (setq-local lsp-ui-doc-max-width 100    ;; Set max width for asm-lsp hover docs
-                          lsp-ui-doc-max-height 50   ;; Set max height for asm-lsp hover docs
-                          lsp-ui-doc-position 'at-point)))) ;; Position docs at point for asm-lsp
-(after! lsp-ui
-  (add-hook 'asm-mode-hook
-            (lambda ()
-              (setq-local lsp-ui-sideline-enable t        ;; Enable diagnostics in the sideline
-                          lsp-ui-sideline-show-diagnostics t)))  ;; Show diagnostics on the sideline
-  (add-hook 'lsp-mode-hook
-            (lambda ()
-              (setq-local lsp-ui-peek-enable t))))      ;; Enable LSP peek for diagnostics
-
-(after! flycheck
-  (add-hook 'asm-mode-hook
-            (lambda ()
-              (flycheck-mode t))))  ;; Enable flycheck in asm-mode
-
 (require 'nasm-mode)
+
+;; ;;For asm-lsp
+;; (after! lsp-mode
+;;   (add-hook 'asm-mode-hook
+;;             (lambda ()
+;;               (setq-local lsp-ui-doc-enable t            ;; Enable LSP UI documentation for asm-lsp
+;;                           lsp-ui-doc-show-with-cursor t  ;; Show hover with cursor movement
+;;                           lsp-ui-doc-delay 0.2))))     ;; Set delay before hover shows
+;; (after! lsp-ui-doc
+;;   (add-hook 'asm-mode-hook
+;;             (lambda ()
+;;               (setq-local lsp-ui-doc-max-width 100    ;; Set max width for asm-lsp hover docs
+;;                           lsp-ui-doc-max-height 50
+;;                           lsp-ui-doc-position 'at-point))))   ;; Set max height for asm-lsp hover docs
+
+;; (after! lsp-mode
+;;   (add-hook 'nasm-mode-hook
+;;             (lambda ()
+;;               (setq-local lsp-ui-doc-enable t            ;; Enable LSP UI documentation for asm-lsp
+;;                           lsp-ui-doc-show-with-cursor t  ;; Show hover with cursor movement
+;;                           lsp-ui-doc-delay 0.2))))     ;; Set delay before hover shows
+;; (after! lsp-ui-doc
+;;   (add-hook 'nasm-mode-hook
+;;             (lambda ()
+;;               (setq-local lsp-ui-doc-max-width 100    ;; Set max width for asm-lsp hover docs
+;;                           lsp-ui-doc-max-height 50   ;; Set max height for asm-lsp hover docs
+;;                           lsp-ui-doc-position 'at-point)))) ;; Position docs at point for asm-lsp
