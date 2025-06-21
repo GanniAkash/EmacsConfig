@@ -49,3 +49,6 @@
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;; (unpin! t)
 
+(package! yasnippet-snippets)
+(package! verilog-mode)
+(package! vhdl-mode)

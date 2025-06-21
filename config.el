@@ -196,6 +196,15 @@
 
 (add-hook 'verilog-mode-hook #'yas-minor-mode)
 
+(after! verilog-mode
+  (setq major-mode-remap-alist
+        '((verilog-mode . verilog-ts-mode)))
+  (add-hook 'verilog-ts-mode-hook #'tree-sitter-hl-mode))
+
+(use-package! yasnippet-snippets
+  :after yasnippet)
+
+
  ;;Verilog Formatting
 (setq lsp-verilog-verible-format-enable t
       lsp-verilog-verible-format-command "verible-verilog-format"
