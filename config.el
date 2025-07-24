@@ -195,11 +195,12 @@
 (add-hook 'systemverilog-mode-hook #'lsp-deferred)
 
 (add-hook 'verilog-mode-hook #'yas-minor-mode)
+(add-hook 'systemverilog-mode-hook #'yas-minor-mode)
 
-(after! verilog-mode
-  (setq major-mode-remap-alist
-        '((verilog-mode . verilog-ts-mode)))
-  (add-hook 'verilog-ts-mode-hook #'tree-sitter-hl-mode))
+;; (after! verilog-mode
+;;   (setq major-mode-remap-alist
+;;         '((verilog-mode . verilog-ts-mode)))
+;;   (add-hook 'verilog-ts-mode-hook #'tree-sitter-hl-mode))
 
 (use-package! yasnippet-snippets
   :after yasnippet)
@@ -212,6 +213,11 @@
 
   ;;Format on save
 (add-hook 'verilog-mode-hook
+          (lambda ()
+            (add-hook 'before-save-hook #'lsp-format-buffer nil t)))
+
+  ;;Format on save
+(add-hook 'systemverilog-mode-hook
           (lambda ()
             (add-hook 'before-save-hook #'lsp-format-buffer nil t)))
 

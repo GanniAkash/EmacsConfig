@@ -50,5 +50,5 @@
 ;; (unpin! t)
 
 (package! yasnippet-snippets)
-(package! verilog-mode)
+;; (package! verilog-mode)
 (package! vhdl-mode)
