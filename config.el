@@ -81,7 +81,7 @@
   ;; Start lsp-mode
   (define-key lsp-mode-map (kbd "C-c l") 'lsp)
   ;; Format buffer (changed from C-c C-f to C-c C-b)
-  (define-key lsp-mode-map (kbd "C-c C-b") 'lsp-format-buffer)
+  (define-key lsp-mode-map (kbd "C-c b") 'lsp-format-buffer)
   ;; Rename symbol
   (define-key lsp-mode-map (kbd "C-c C-r") 'lsp-rename)
   ;; Execute code action
@@ -99,9 +99,9 @@
   ;; Show documentation
   (define-key lsp-mode-map (kbd "C-c C-k") 'lsp-ui-doc-show)
   ;; Show symbols
-  (define-key lsp-mode-map (kbd "C-c C-c") 'lsp-treemacs-symbols)
+  (define-key lsp-mode-map (kbd "C-c c") 'lsp-treemacs-symbols)
   ;; Restart LSP server
-  (define-key lsp-mode-map (kbd "C-c C-s") 'lsp-restart-workspace)
+  (define-key lsp-mode-map (kbd "C-c s") 'lsp-restart-workspace)
   ;; Shutdown LSP server
   (define-key lsp-mode-map (kbd "C-c C-q") 'lsp-workspace-shutdown)
   ;; Diagnostics list
@@ -111,9 +111,9 @@
   ;; Hover documentation
   (define-key lsp-mode-map (kbd "C-c C-h") 'lsp-ui-doc-glance)
   ;; Next diagnostic
-  (define-key lsp-mode-map (kbd "C-c C-n") 'flycheck-next-error)
+  (define-key lsp-mode-map (kbd "C-c n") 'flycheck-next-error)
   ;; Previous diagnostic
-  (define-key lsp-mode-map (kbd "C-c C-p") 'flycheck-previous-error)
+  (define-key lsp-mode-map (kbd "C-c p") 'flycheck-previous-error)
 )
 
 
@@ -128,16 +128,98 @@
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
 
 ;;For eshell
-(defun split-window-vertically-short ()
-  "Split the window into two panes vertically, with the bottom one shorter."
-  (interactive)
-  (split-window-vertically)
-  ;;(balance-windows)
-  ;;(enlarge-window (- (window-height) 10))
-  ;;(other-window 1)
-  (eshell))
+(defvar my/bottom-vterm-buffer "*vterm*")
 
-(global-set-key (kbd "C-x -") 'split-window-vertically-short)
+(defun my/vterm-bottom-toggle ()
+  "Toggle a persistent vterm at the bottom of the frame."
+  (interactive)
+  (let ((buf (get-buffer my/bottom-vterm-buffer)))
+    (cond
+     ;; If window is visible → hide it
+     ((and buf (get-buffer-window buf))
+      (delete-window (get-buffer-window buf)))
+
+     ;; If buffer exists but hidden → show it
+     (buf
+      (display-buffer
+       buf
+       '((display-buffer-at-bottom)
+         (window-height . 10)))
+      (select-window (get-buffer-window buf)))
+
+     ;; Buffer does not exist → create it once
+     (t
+      (let ((default-directory (or (project-root (project-current))
+                                   default-directory)))
+        (vterm my/bottom-vterm-buffer))
+      (display-buffer
+       (get-buffer my/bottom-vterm-buffer)
+       '((display-buffer-at-bottom)
+         (window-height . 10)))
+      (select-window (get-buffer-window my/bottom-vterm-buffer))))))
+
+(global-set-key (kbd "C-x -") #'my/vterm-bottom-toggle)
+
+;;Inline Shell
+(defvar my/async-process-buffer "*Project Async Process*")
+(defvar my/async-process nil)
+
+(defun my/projectile-async-shell-command (command)
+  "Run shell COMMAND asynchronously at Projectile project root.
+If another process is running, ask before killing it."
+  (interactive
+   (list (read-shell-command "Async command (project root): "
+                             nil nil
+                             'shell-command-history)))
+  (let* ((default-directory
+          (or (projectile-project-root)
+              default-directory))
+         (buf (get-buffer-create my/async-process-buffer)))
+
+    ;; If a process is already running, ask before killing it
+    (when (and my/async-process
+               (process-live-p my/async-process))
+      (unless (y-or-n-p
+               (format "Process \"%s\" is running. Kill it and start a new one? "
+                       (process-name my/async-process)))
+        (user-error "Aborted"))
+      (kill-process my/async-process))
+
+    ;; Prepare buffer (read-only, output-only)
+    (with-current-buffer buf
+      (let ((inhibit-read-only t))
+        (erase-buffer))
+      (special-mode))   ;; <-- THIS is the key line
+
+    ;; Start async process
+    (setq my/async-process
+          (start-process-shell-command
+           "project-async"
+           buf
+           command))
+
+    ;; Notify on exit
+    (set-process-sentinel
+     my/async-process
+     (lambda (proc event)
+       (message "[%s] %s"
+                (process-name proc)
+                (string-trim event))))
+
+    (message "Started async process: %s" command)))
+
+(defun my/kill-project-async-process ()
+  "Kill the running project async process."
+  (interactive)
+  (if (and my/async-process
+           (process-live-p my/async-process))
+      (progn
+        (kill-process my/async-process)
+        (message "Async process killed"))
+    (message "No running async process")))
+
+(global-set-key (kbd "C-c ,") #'my/projectile-async-shell-command)
+(global-set-key (kbd "C-c k") #'my/kill-project-async-process)
 
 ;;For Company-mode
 (setq company-minimum-prefix-length 1
@@ -229,6 +311,124 @@
 (add-hook 'c++-mode-hook 'lsp)
 (add-hook 'c-mode-hook 'lsp)
 
+
+(with-eval-after-load 'lsp-mode
+  (require 'dap-cpptools))
+
+;;For GDB
+(setq gdb-many-windows t)
+(setq gdb-show-main t)
+(setq gdb-restore-window-configuration-after-quit t)
+(setq gdb-confirm-quit nil)
+(setq gdb-non-stop-setting nil)
+(setq gud-gdb-command-name "gdb-multiarch -q --annotate=3")
+
+(defun my/projectile-gdb ()
+  "Run gdb from Projectile project root."
+  (interactive)
+  (let ((default-directory (projectile-project-root)))
+    (call-interactively 'gdb)))
+
+(global-set-key (kbd "C-c d") #'my/projectile-gdb)
+
+(setq gdb-use-colon-colon-notation t)
+(setq gdb-use-separate-io-buffer t)
+
+(defun my/gdb-running-p ()
+  "Return non-nil if a GDB process is running."
+  (and (boundp 'gud-comint-buffer)
+       gud-comint-buffer
+       (buffer-live-p gud-comint-buffer)
+       (comint-check-proc gud-comint-buffer)))
+
+(defun my/gdb-send (cmd)
+  "Send CMD to GDB if it is running."
+  (when (my/gdb-running-p)
+    (with-current-buffer gud-comint-buffer
+      (goto-char (point-max))
+      (insert cmd)
+      (comint-send-input))))
+
+(defun my/gdb-next ()
+  (interactive)
+  (my/gdb-send "n"))
+
+(defun my/gdb-step ()
+  (interactive)
+  (my/gdb-send "s"))
+
+(defun my/gdb-continue ()
+  (interactive)
+  (my/gdb-send "c"))
+
+(defun my/gdb-get-breakpoints ()
+  "Return GDB breakpoint info as string."
+  (with-current-buffer gud-comint-buffer
+    (gud-call "info breakpoints")))
+
+(defun my/gdb-breakpoints-at (file line)
+  "Return a list of breakpoint numbers at FILE:LINE."
+  (let ((output (my/gdb-get-breakpoints))
+        (regex (format "\\([0-9]+\\).*%s:%d"
+                       (regexp-quote file) line))
+        result)
+    (with-temp-buffer
+      (insert output)
+      (goto-char (point-min))
+      (while (re-search-forward regex nil t)
+        (push (match-string 1) result)))
+    result)
+  (message "%s" result)
+  )
+
+(defun my/gdb-toggle-breakpoint ()
+  (interactive)
+  (when (my/gdb-running-p)
+    (let* ((file (file-name-nondirectory (buffer-file-name)))
+           (line (line-number-at-pos))
+           (bps (my/gdb-breakpoints-at file line)))
+      (if bps
+          ;; Delete all breakpoints at this line
+          (dolist (bp bps)
+            (my/gdb-send (format "delete %s" bp)))
+        ;; No breakpoint → create
+        (my/gdb-send (format "b %s:%d" file line))))))
+
+
+  (with-eval-after-load 'cc-mode
+  (define-key c-mode-base-map (kbd "C-c C-n") #'my/gdb-next)
+  (define-key c-mode-base-map (kbd "C-c C-s") #'my/gdb-step)
+  (define-key c-mode-base-map (kbd "C-c C-c") #'my/gdb-continue)
+  (define-key c-mode-base-map (kbd "C-c C-b") #'my/gdb-toggle-breakpoint))
+
+
+;; Load and use sr-speedbar
+(require 'sr-speedbar)
+
+(defun my-gdb-io-to-speedbar ()
+  "Replace GDB IO window with SPEEDBAR and undedicate it."
+  (when (bound-and-true-p gdb-many-windows)
+    (dolist (win (window-list))
+      (let ((buf (window-buffer win)))
+        (when (and buf
+                   (string-match-p "^\\*input/output of " (buffer-name buf)))
+          ;; unpin window
+          (set-window-dedicated-p win nil)
+          ;; switch to SPEEDBAR
+          (with-selected-window win
+            (switch-to-buffer " SPEEDBAR")))))))
+
+(add-hook
+ 'gdb-mode-hook
+ (lambda ()
+   (run-with-idle-timer 0.2 nil #'my-gdb-io-to-speedbar)))
+
+
+(speedbar-frame-mode -1)
+(setq speedbar-use-single-frame t)
+(setq speedbar-frame-parameters nil)
+
+
 ;; Nerd Font
 (set-face-attribute 'default nil :font "FiraCode Nerd Font Mono-12")
 
@@ -282,7 +482,7 @@
   :after org
   :custom
   (org-agenda-include-diary t)
-  (org-agenda-files '("C:\\Users\\FKCXQ3M\\OneDrive - Deere & Co\\Documents\\Notes"))
+  (org-agenda-files '("/mnt/c/Users/gakas/Onedrive/Documents/Notes"))
   (org-agenda-prefix-format '((agenda . " %i %-12:c%?-12t% s")
                               ;; Indent todo items by level to show nesting
                               (todo . " %i %-12:c%l")

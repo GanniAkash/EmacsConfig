@@ -59,3 +59,4 @@
 (package! org-superstar)
 (package! org-fragtog)
 (package! org-bullets)
+(package! sr-speedbar)
