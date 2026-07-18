@@ -6,6 +6,7 @@
  ;; If there is more than one, they won't work right.
  '(custom-safe-themes
    '("f1e8339b04aef8f145dd4782d03499d9d716fdc0361319411ac2efc603249326" default))
+ '(gdb-registers-filter-pattern-list '("^pc$" "^sp$" "^lr$" "^r0$" "^r1$" "^r7$"))
  '(package-selected-packages '(auctex dash flymake-nasm htmlize hydra nasm-mode)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.

@@ -60,3 +60,6 @@
 (package! org-fragtog)
 (package! org-bullets)
 (package! sr-speedbar)
+(package! cmake-integration
+  :recipe (:host github
+                 :repo "darcamo/cmake-integration"))

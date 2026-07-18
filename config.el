@@ -99,9 +99,9 @@
   ;; Show documentation
   (define-key lsp-mode-map (kbd "C-c C-k") 'lsp-ui-doc-show)
   ;; Show symbols
-  (define-key lsp-mode-map (kbd "C-c c") 'lsp-treemacs-symbols)
+  ;; (define-key lsp-mode-map (kbd "C-c C-c") 'lsp-treemacs-symbols)
   ;; Restart LSP server
-  (define-key lsp-mode-map (kbd "C-c s") 'lsp-restart-workspace)
+  ;; (define-key lsp-mode-map (kbd "C-c C-s") 'lsp-restart-workspace)
   ;; Shutdown LSP server
   (define-key lsp-mode-map (kbd "C-c C-q") 'lsp-workspace-shutdown)
   ;; Diagnostics list
@@ -111,9 +111,9 @@
   ;; Hover documentation
   (define-key lsp-mode-map (kbd "C-c C-h") 'lsp-ui-doc-glance)
   ;; Next diagnostic
-  (define-key lsp-mode-map (kbd "C-c n") 'flycheck-next-error)
+  ;; (define-key lsp-mode-map (kbd "C-c C-n") 'flycheck-next-error)
   ;; Previous diagnostic
-  (define-key lsp-mode-map (kbd "C-c p") 'flycheck-previous-error)
+  (define-key lsp-mode-map (kbd "C-c C-p") 'flycheck-previous-error)
 )
 
 
@@ -159,6 +159,9 @@
       (select-window (get-buffer-window my/bottom-vterm-buffer))))))
 
 (global-set-key (kbd "C-x -") #'my/vterm-bottom-toggle)
+
+;; Make Process
+(global-set-key (kbd "C-c C-.") #'+make/run)
 
 ;;Inline Shell
 (defvar my/async-process-buffer "*Project Async Process*")
@@ -394,11 +397,31 @@ If another process is running, ask before killing it."
         ;; No breakpoint → create
         (my/gdb-send (format "b %s:%d" file line))))))
 
+;; (defun my/gdb-running-p ()
+;;   (and (fboundp 'gdb-get-buffer)
+;;        (gdb-get-buffer 'gdb-inferior)))
+
+(defun my/c-c-c-n-dispatch ()
+  "Use GDB command if a GDB session is active, otherwise go to next Flycheck error."
+  (interactive)
+  (if (my/gdb-running-p)
+      (my/gdb-next)
+    (flycheck-next-error)))
+
+
+(defun my/c-c-c-c-dispatch ()
+  "Use GDB command if a GDB session is active, otherwise go to next Flycheck error."
+  (interactive)
+  (if (my/gdb-running-p)
+      (my/gdb-continue)
+    (lsp-treemacs-symbols)))
+
+
 
   (with-eval-after-load 'cc-mode
-  (define-key c-mode-base-map (kbd "C-c C-n") #'my/gdb-next)
+  (define-key c-mode-base-map (kbd "C-c C-n") #'my/c-c-c-n-dispatch)
   (define-key c-mode-base-map (kbd "C-c C-s") #'my/gdb-step)
-  (define-key c-mode-base-map (kbd "C-c C-c") #'my/gdb-continue)
+  (define-key c-mode-base-map (kbd "C-c C-c") #'my/c-c-c-c-dispatch)
   (define-key c-mode-base-map (kbd "C-c C-b") #'my/gdb-toggle-breakpoint))
 
 
@@ -744,3 +767,9 @@ Do not touch trailing heading tags (the tag block at end of a headline)."
 (setq org-export-with-sub-superscripts '{})
 
 (setq org-export-with-tags nil)  ;; or t to include
+
+;; CMake
+
+(use-package! cmake-integration
+  :after cmake-mode
+  :config)
