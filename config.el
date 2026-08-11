@@ -81,7 +81,7 @@
   ;; Start lsp-mode
   (define-key lsp-mode-map (kbd "C-c l") 'lsp)
   ;; Format buffer (changed from C-c C-f to C-c C-b)
-  (define-key lsp-mode-map (kbd "C-c b") 'lsp-format-buffer)
+  (define-key lsp-mode-map (kbd "C-c C-f") 'lsp-format-buffer)
   ;; Rename symbol
   (define-key lsp-mode-map (kbd "C-c C-r") 'lsp-rename)
   ;; Execute code action
@@ -99,9 +99,9 @@
   ;; Show documentation
   (define-key lsp-mode-map (kbd "C-c C-k") 'lsp-ui-doc-show)
   ;; Show symbols
-  ;; (define-key lsp-mode-map (kbd "C-c C-c") 'lsp-treemacs-symbols)
+  (define-key lsp-mode-map (kbd "C-c C-c") 'lsp-treemacs-symbols)
   ;; Restart LSP server
-  ;; (define-key lsp-mode-map (kbd "C-c C-s") 'lsp-restart-workspace)
+  (define-key lsp-mode-map (kbd "C-c C-s") 'lsp-restart-workspace)
   ;; Shutdown LSP server
   (define-key lsp-mode-map (kbd "C-c C-q") 'lsp-workspace-shutdown)
   ;; Diagnostics list
@@ -111,7 +111,7 @@
   ;; Hover documentation
   (define-key lsp-mode-map (kbd "C-c C-h") 'lsp-ui-doc-glance)
   ;; Next diagnostic
-  ;; (define-key lsp-mode-map (kbd "C-c C-n") 'flycheck-next-error)
+  (define-key lsp-mode-map (kbd "C-c C-n") 'flycheck-next-error)
   ;; Previous diagnostic
   (define-key lsp-mode-map (kbd "C-c C-p") 'flycheck-previous-error)
 )
@@ -161,8 +161,9 @@
 (global-set-key (kbd "C-x -") #'my/vterm-bottom-toggle)
 
 ;; Make Process
-(global-set-key (kbd "C-c C-.") #'+make/run)
-
+(global-set-key (kbd "C-c C-.") #'cmake-integration-save-and-compile)
+(global-set-key (kbd "C-c C-,") #'cmake-integration--configure-transient)
+(global-set-key (kbd "C-c C-/") #'cmake-integration-debug-last-target)
 ;;Inline Shell
 (defvar my/async-process-buffer "*Project Async Process*")
 (defvar my/async-process nil)
@@ -336,95 +337,6 @@ If another process is running, ask before killing it."
 
 (setq gdb-use-colon-colon-notation t)
 (setq gdb-use-separate-io-buffer t)
-
-(defun my/gdb-running-p ()
-  "Return non-nil if a GDB process is running."
-  (and (boundp 'gud-comint-buffer)
-       gud-comint-buffer
-       (buffer-live-p gud-comint-buffer)
-       (comint-check-proc gud-comint-buffer)))
-
-(defun my/gdb-send (cmd)
-  "Send CMD to GDB if it is running."
-  (when (my/gdb-running-p)
-    (with-current-buffer gud-comint-buffer
-      (goto-char (point-max))
-      (insert cmd)
-      (comint-send-input))))
-
-(defun my/gdb-next ()
-  (interactive)
-  (my/gdb-send "n"))
-
-(defun my/gdb-step ()
-  (interactive)
-  (my/gdb-send "s"))
-
-(defun my/gdb-continue ()
-  (interactive)
-  (my/gdb-send "c"))
-
-(defun my/gdb-get-breakpoints ()
-  "Return GDB breakpoint info as string."
-  (with-current-buffer gud-comint-buffer
-    (gud-call "info breakpoints")))
-
-(defun my/gdb-breakpoints-at (file line)
-  "Return a list of breakpoint numbers at FILE:LINE."
-  (let ((output (my/gdb-get-breakpoints))
-        (regex (format "\\([0-9]+\\).*%s:%d"
-                       (regexp-quote file) line))
-        result)
-    (with-temp-buffer
-      (insert output)
-      (goto-char (point-min))
-      (while (re-search-forward regex nil t)
-        (push (match-string 1) result)))
-    result)
-  (message "%s" result)
-  )
-
-(defun my/gdb-toggle-breakpoint ()
-  (interactive)
-  (when (my/gdb-running-p)
-    (let* ((file (file-name-nondirectory (buffer-file-name)))
-           (line (line-number-at-pos))
-           (bps (my/gdb-breakpoints-at file line)))
-      (if bps
-          ;; Delete all breakpoints at this line
-          (dolist (bp bps)
-            (my/gdb-send (format "delete %s" bp)))
-        ;; No breakpoint → create
-        (my/gdb-send (format "b %s:%d" file line))))))
-
-;; (defun my/gdb-running-p ()
-;;   (and (fboundp 'gdb-get-buffer)
-;;        (gdb-get-buffer 'gdb-inferior)))
-
-(defun my/c-c-c-n-dispatch ()
-  "Use GDB command if a GDB session is active, otherwise go to next Flycheck error."
-  (interactive)
-  (if (my/gdb-running-p)
-      (my/gdb-next)
-    (flycheck-next-error)))
-
-
-(defun my/c-c-c-c-dispatch ()
-  "Use GDB command if a GDB session is active, otherwise go to next Flycheck error."
-  (interactive)
-  (if (my/gdb-running-p)
-      (my/gdb-continue)
-    (lsp-treemacs-symbols)))
-
-
-
-  (with-eval-after-load 'cc-mode
-  (define-key c-mode-base-map (kbd "C-c C-n") #'my/c-c-c-n-dispatch)
-  (define-key c-mode-base-map (kbd "C-c C-s") #'my/gdb-step)
-  (define-key c-mode-base-map (kbd "C-c C-c") #'my/c-c-c-c-dispatch)
-  (define-key c-mode-base-map (kbd "C-c C-b") #'my/gdb-toggle-breakpoint))
-
-
 ;; Load and use sr-speedbar
 (require 'sr-speedbar)
 
@@ -773,3 +685,64 @@ Do not touch trailing heading tags (the tag block at end of a headline)."
 (use-package! cmake-integration
   :after cmake-mode
   :config)
+
+;;DAP
+(after! dap-mode
+  (setq dap-auto-configure-features
+        '(sessions locals controls tooltip)))
+(after! dap-mode
+  (dap-ui-mode 1)
+  (dap-auto-configure-mode 1))
+;; (setq dap-auto-configure-features '(sessions locals controls tooltip))
+(setq dap-gdb-debug-program '("/usr/bin/gdb-multiarch" "-i" "dap"))
+;; config.el
+(use-package! dap-mode
+  :config
+  (dap-auto-configure-mode)
+  (require 'dap-gdb)
+  )
+
+;;Pandoc
+(setq markdown-command "pandoc")
+
+(require 'gud)
+
+(defun gud-get-process-name ()
+  (let ((process (get-buffer-process gud-comint-buffer)))
+	(if (null process)
+		nil
+	  (process-name process))))
+
+;;;###autoload
+(defun gdb-save-breakpoints ()
+  "Save current breakpoint definitions as a script."
+  (interactive)
+  (let ((gud-process-name (gud-get-process-name)))
+	(cond (gud-process-name
+		   (gud-basic-call
+			(format "save breakpoints ~/.gdb-bp-sessions/.%s-breakpoints.gdb"
+					gud-process-name))))))
+
+;;;###autoload
+(defun gdb-restore-breakpoints ()
+  "Restore the saved breakpoint definitions as a script."
+  (interactive)
+  (let ((breakpoints-file (format "~/.gdb-bp-sessions/.%s-breakpoints.gdb"
+								  (gud-get-process-name))))
+	(if (file-exists-p breakpoints-file)
+		(gud-basic-call (format "source %s" breakpoints-file)))))
+
+;;;###autoload
+(defun gdb-kill-buffer ()
+  "Kill gdb-buffer."
+  (interactive)
+  (gdb-save-breakpoints)
+  (kill-buffer))
+
+(defun gdb-breakpoint-session ()
+  (gdb-restore-breakpoints)
+  (local-set-key (kbd "C-x k") 'gdb-kill-buffer))
+
+(add-hook 'gdb-mode-hook 'gdb-breakpoint-session)
+
+;;; gdb-bp-session ends here
